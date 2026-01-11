@@ -1,7 +1,7 @@
 #if !SKIP_BRIDGE
 import Foundation
 import SwiftUI
-import SkipFuseRevenueCat
+import SkipRevenue
 #if !SKIP
 import RevenueCat
 import RevenueCatUI
