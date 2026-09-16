@@ -47,6 +47,17 @@ final class SkipRevenueTests: XCTestCase {
         XCTAssertEqual(RCFusePackageType.monthly.rawValue, "monthly")
     }
 
+    // Callers pick a replacement mode by name; the cases must stay distinct
+    // and complete against Play's `ReplacementMode` set (minus KEEP_EXISTING,
+    // which only applies to add-ons).
+    func testGoogleReplacementModeCases() throws {
+        let modes: [RCFuseGoogleReplacementMode] = [
+            .withTimeProration, .chargeProratedPrice, .chargeFullPrice, .withoutProration, .deferred
+        ]
+        XCTAssertEqual(Set(modes.map(\.rawValue)).count, 5)
+        XCTAssertEqual(RCFuseGoogleReplacementMode.chargeFullPrice.rawValue, 2)
+    }
+
     func testRevenueCatFuseSingleton() throws {
         let service = RevenueCatFuse.shared
         XCTAssertNotNil(service)
