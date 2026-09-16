@@ -35,6 +35,7 @@ import com.revenuecat.purchases.awaitRestore
 import com.revenuecat.purchases.awaitSyncPurchases
 import com.revenuecat.purchases.models.Period
 import com.revenuecat.purchases.models.GoogleReplacementMode
+import com.revenuecat.purchases.CacheFetchPolicy
 #endif
 
 // MARK: - Value types
@@ -1053,6 +1054,11 @@ public final class RCFuseSubscriptionInfo: @unchecked Sendable {
         return subscriptionInfo.refundedAt
     }
 
+    /// When a paused Play subscription resumes (Android only). Always `nil` on iOS.
+    public var autoResumeDate: Date? {
+        return nil
+    }
+
     public var isFamilyShared: Bool {
         return subscriptionInfo.ownershipType == .familyShared
     }
@@ -1128,6 +1134,14 @@ public final class RCFuseSubscriptionInfo: KotlinConverting<com.revenuecat.purch
 
     public var refundedAt: Date? {
         guard let d = subscriptionInfo.refundedAt else { return nil }
+        return Date(platformValue: d)
+    }
+
+    /// When a subscription the user paused resumes and bills again. A paused
+    /// subscription is neither active nor cancelled nor in a billing issue, so
+    /// without this date it looks like one that simply ran out.
+    public var autoResumeDate: Date? {
+        guard let d = subscriptionInfo.autoResumeDate else { return nil }
         return Date(platformValue: d)
     }
 
@@ -1470,6 +1484,23 @@ public struct RevenueCatFuse: @unchecked Sendable {
         return RCFuseCustomerInfo(customerInfo: customerInfo)
         #else
         let customerInfo = Purchases.sharedInstance.awaitCustomerInfo()
+        return RCFuseCustomerInfo(customerInfo: customerInfo)
+        #endif
+    }
+
+    /// Get customer info from RevenueCat's servers, bypassing the local cache.
+    /// Mirrors iOS `Purchases.customerInfo(fetchPolicy: .fetchCurrent)`.
+    ///
+    /// `getCustomerInfo()` may return cached data that is minutes old. Before a
+    /// purchase that has to know which subscription it replaces, that is the
+    /// wrong answer: a subscription bought on another device a moment ago would
+    /// be missing, and the purchase would land next to it.
+    public func getFreshCustomerInfo() async throws -> RCFuseCustomerInfo {
+        #if !SKIP
+        let customerInfo = try await Purchases.shared.customerInfo(fetchPolicy: .fetchCurrent)
+        return RCFuseCustomerInfo(customerInfo: customerInfo)
+        #else
+        let customerInfo = Purchases.sharedInstance.awaitCustomerInfo(CacheFetchPolicy.FETCH_CURRENT)
         return RCFuseCustomerInfo(customerInfo: customerInfo)
         #endif
     }
